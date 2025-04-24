@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Metrics Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .dashboard {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+            cursor: pointer;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 8px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.active {
+            background-color: #2196F3;
+        }
+        .chart-container {
+            margin-top: 20px;
+            height: 300px;
+            position: relative;
+        }
+        .bar {
+            position: absolute;
+            bottom: 0;
+            background-color: #4CAF50;
+            transition: height 0.3s;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>Health Metrics Dashboard</h1>
+        
+        <div class="buttons">
+            <button onclick="showAllMetrics()">Show All Metrics</button>
+            <button onclick="showBloodPressure()">Blood Pressure</button>
+            <button onclick="showHeartMetrics()">Heart Metrics</button>
+            <button onclick="showBodyMetrics()">Body Metrics</button>
+        </div>
+        
+        <table id="metricsTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">Age Group</th>
+                    <th onclick="sortTable(1)">Systolic BP</th>
+                    <th onclick="sortTable(2)">Diastolic BP</th>
+                    <th onclick="sortTable(3)">Heart Rate</th>
+                    <th onclick="sortTable(4)">BMI</th>
+                    <th onclick="sortTable(5)">SpO2</th>
+                    <th onclick="sortTable(6)">Stress</th>
+                    <th onclick="sortTable(7)">HRV (SDNN)</th>
+                    <th onclick="sortTable(8)">Sample Size</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>0-18</td>
+                    <td>114.6563</td>
+                    <td>77.8866</td>
+                    <td>80.78</td>
+                    <td>24.63</td>
+                    <td>98.26</td>
+                    <td>3.04</td>
+                    <td>39.13</td>
+                    <td>1,376</td>
+                </tr>
+                <tr>
+                    <td>19-35</td>
+                    <td>115.7056</td>
+                    <td>80.1619</td>
+                    <td>80.35</td>
+                    <td>26.01</td>
+                    <td>98.27</td>
+                    <td>3.06</td>
+                    <td>38.22</td>
+                    <td>16,975</td>
+                </tr>
+                <tr>
+                    <td>36-50</td>
+                    <td>119.7857</td>
+                    <td>84.1413</td>
+                    <td>80.71</td>
+                    <td>28.42</td>
+                    <td>98.41</td>
+                    <td>3.23</td>
+                    <td>32.43</td>
+                    <td>14,892</td>
+                </tr>
+                <tr>
+                    <td>51+</td>
+                    <td>122.7211</td>
+                    <td>84.2559</td>
+                    <td>78.96</td>
+                    <td>29.85</td>
+                    <td>98.13</td>
+                    <td>3.24</td>
+                    <td>31.53</td>
+                    <td>11,578</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div>
+            <h3>Visualization</h3>
+            <div class="buttons">
+                <button id="systolicBtn" onclick="visualizeMetric(1)" class="active">Systolic BP</button>
+                <button id="diastolicBtn" onclick="visualizeMetric(2)">Diastolic BP</button>
+                <button id="heartRateBtn" onclick="visualizeMetric(3)">Heart Rate</button>
+                <button id="bmiBtn" onclick="visualizeMetric(4)">BMI</button>
+                <button id="spo2Btn" onclick="visualizeMetric(5)">SpO2</button>
+                <button id="stressBtn" onclick="visualizeMetric(6)">Stress</button>
+                <button id="hrvBtn" onclick="visualizeMetric(7)">HRV</button>
+            </div>
+            
+            <div id="chartContainer" class="chart-container">
+                <!-- Bars will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to sort the table
+        function sortTable(n) {
+            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+            table = document.getElementById("metricsTable");
+            switching = true;
+            dir = "asc";
+            
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+                
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+                    
+                    if (dir == "asc") {
+                        if (n === 0) {
+                            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        } else {
+                            if (parseFloat(x.innerHTML.replace(',', '')) > parseFloat(y.innerHTML.replace(',', ''))) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        }
+                    } else if (dir == "desc") {
+                        if (n === 0) {
+                            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        } else {
+                            if (parseFloat(x.innerHTML.replace(',', '')) < parseFloat(y.innerHTML.replace(',', ''))) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else {
+                    if (switchcount == 0 && dir == "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
+        }
+        
+        // Function to show/hide columns
+        function showAllMetrics() {
+            var table = document.getElementById("metricsTable");
+            var rows = table.getElementsByTagName("tr");
+            
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName("td");
+                var headers = rows[i].getElementsByTagName("th");
+                
+                for (var j = 0; j < cells.length; j++) {
+                    cells[j].style.display = "";
+                }
+                
+                for (var j = 0; j < headers.length; j++) {
+                    headers[j].style.display = "";
+                }
+            }
+        }
+        
+        function showBloodPressure() {
+            var table = document.getElementById("metricsTable");
+            var rows = table.getElementsByTagName("tr");
+            
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName("td");
+                var headers = rows[i].getElementsByTagName("th");
+                
+                for (var j = 0; j < cells.length; j++) {
+                    if (j === 0 || j === 1 || j === 2 || j === 8) {
+                        cells[j].style.display = "";
+                    } else {
+                        cells[j].style.display = "none";
+                    }
+                }
+                
+                for (var j = 0; j < headers.length; j++) {
+                    if (j === 0 || j === 1 || j === 2 || j === 8) {
+                        headers[j].style.display = "";
+                    } else {
+                        headers[j].style.display = "none";
+                    }
+                }
+            }
+        }
+        
+        function showHeartMetrics() {
+            var table = document.getElementById("metricsTable");
+            var rows = table.getElementsByTagName("tr");
+            
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName("td");
+                var headers = rows[i].getElementsByTagName("th");
+                
+                for (var j = 0; j < cells.length; j++) {
+                    if (j === 0 || j === 3 || j === 5 || j === 7 || j === 8) {
+                        cells[j].style.display = "";
+                    } else {
+                        cells[j].style.display = "none";
+                    }
+                }
+                
+                for (var j = 0; j < headers.length; j++) {
+                    if (j === 0 || j === 3 || j === 5 || j === 7 || j === 8) {
+                        headers[j].style.display = "";
+                    } else {
+                        headers[j].style.display = "none";
+                    }
+                }
+            }
+        }
+        
+        function showBodyMetrics() {
+            var table = document.getElementById("metricsTable");
+            var rows = table.getElementsByTagName("tr");
+            
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName("td");
+                var headers = rows[i].getElementsByTagName("th");
+                
+                for (var j = 0; j < cells.length; j++) {
+                    if (j === 0 || j === 4 || j === 6 || j === 8) {
+                        cells[j].style.display = "";
+                    } else {
+                        cells[j].style.display = "none";
+                    }
+                }
+                
+                for (var j = 0; j < headers.length; j++) {
+                    if (j === 0 || j === 4 || j === 6 || j === 8) {
+                        headers[j].style.display = "";
+                    } else {
+                        headers[j].style.display = "none";
+                    }
+                }
+            }
+        }
+        
+        // Function to visualize a metric as a bar chart
+        function visualizeMetric(colIndex) {
+            // Update active button
+            const buttons = document.querySelectorAll('.buttons button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            document.getElementById(['systolicBtn', 'diastolicBtn', 'heartRateBtn', 'bmiBtn', 'spo2Btn', 'stressBtn', 'hrvBtn'][colIndex-1]).classList.add('active');
+            
+            // Get data from table
+            var table = document.getElementById("metricsTable");
+            var rows = table.getElementsByTagName("tr");
+            var data = [];
+            
+            for (var i = 1; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName("td");
+                data.push({
+                    ageGroup: cells[0].innerText,
+                    value: parseFloat(cells[colIndex].innerText)
+                });
+            }
+            
+            // Find min and max values for scaling
+            var values = data.map(item => item.value);
+            var minValue = Math.min(...values);
+            var maxValue = Math.max(...values);
+            
+            // Clear previous chart
+            var chartContainer = document.getElementById("chartContainer");
+            chartContainer.innerHTML = "";
+            
+            // Create bars
+            var barWidth = 100 / data.length;
+            
+            for (var i = 0; i < data.length; i++) {
+                var normalizedHeight = ((data[i].value - minValue) / (maxValue - minValue)) * 80 + 20;
+                
+                var bar = document.createElement("div");
+                bar.className = "bar";
+                bar.style.left = (i * barWidth) + "%";
+                bar.style.width = (barWidth - 2) + "%";
+                bar.style.height = normalizedHeight + "%";
+                
+                // Different colors based on age group
+                var colors = ["#4CAF50", "#2196F3", "#FF9800", "#E91E63"];
+                bar.style.backgroundColor = colors[i];
+                
+                // Add label and value
+                bar.innerHTML = data[i].ageGroup + "<br>" + data[i].value.toFixed(2);
+                
+                chartContainer.appendChild(bar);
+            }
+        }
+        
+        // Initialize with systolic BP visualization
+        window.onload = function() {
+            visualizeMetric(1);
+        };
+    </script>
+</body>
+</html>
