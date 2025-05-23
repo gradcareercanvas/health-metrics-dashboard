@@ -173,41 +173,40 @@
         let currentData = [];
         let currentHeaders = [];
         let isSignedIn = false;
+        let authInstance = null;
 
         // Google API configuration
         const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
         const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 
-        // Initialize Google API
+        // Initialize Google API - Fixed version
         async function initializeGapi() {
-            await gapi.load('auth2', initAuth);
-        }
+            return new Promise((resolve, reject) => {
+                gapi.load('client:auth2', async () => {
+                    try {
+                        const clientId = document.getElementById('clientId').value;
+                        if (!clientId) {
+                            throw new Error('Please enter your OAuth Client ID');
+                        }
 
-        async function initAuth() {
-            const clientId = document.getElementById('clientId').value;
-            if (!clientId) {
-                showError('Please enter your OAuth Client ID');
-                return;
-            }
-
-            try {
-                await gapi.load('client:auth2', async () => {
-                    await gapi.client.init({
-                        discoveryDocs: [DISCOVERY_DOC],
-                        clientId: clientId,
-                        scope: SCOPES
-                    });
-                    
-                    const authInstance = gapi.auth2.getAuthInstance();
-                    isSignedIn = authInstance.isSignedIn.get();
-                    updateSignInStatus();
+                        await gapi.client.init({
+                            discoveryDocs: [DISCOVERY_DOC],
+                            clientId: clientId,
+                            scope: SCOPES
+                        });
+                        
+                        authInstance = gapi.auth2.getAuthInstance();
+                        isSignedIn = authInstance.isSignedIn.get();
+                        updateSignInStatus();
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
                 });
-            } catch (error) {
-                showError('Failed to initialize Google API: ' + error.message);
-            }
+            });
         }
 
-        // Function to authorize and load data
+        // Function to authorize and load data - Fixed version
         async function authorizeAndLoad() {
             const clientId = document.getElementById('clientId').value;
             if (!clientId) {
@@ -215,20 +214,27 @@
                 return;
             }
 
+            showLoading(true);
+            hideError();
+
             try {
+                // Initialize the API first
                 await initializeGapi();
                 
-                const authInstance = gapi.auth2.getAuthInstance();
+                // Check if already signed in, if not, sign in
                 if (!authInstance.isSignedIn.get()) {
                     await authInstance.signIn();
                 }
                 
+                isSignedIn = true;
                 await loadDataFromGoogleSheets();
                 updateSignInStatus();
                 
             } catch (error) {
                 console.error('Authorization error:', error);
                 showError('Authorization failed: ' + error.message);
+            } finally {
+                showLoading(false);
             }
         }
 
@@ -241,9 +247,6 @@
                 showError('Please enter Sheet ID');
                 return;
             }
-
-            showLoading(true);
-            hideError();
 
             try {
                 const response = await gapi.client.sheets.spreadsheets.values.get({
@@ -263,24 +266,23 @@
             } catch (error) {
                 console.error('Error fetching data:', error);
                 showError('Error loading data: ' + error.message);
-            } finally {
-                showLoading(false);
             }
         }
 
-        // Function to sign out
+        // Function to sign out - Fixed version
         async function signOut() {
-            const authInstance = gapi.auth2.getAuthInstance();
-            await authInstance.signOut();
-            isSignedIn = false;
-            updateSignInStatus();
-            document.getElementById('dashboardContent').style.display = 'none';
+            if (authInstance) {
+                await authInstance.signOut();
+                isSignedIn = false;
+                updateSignInStatus();
+                document.getElementById('dashboardContent').style.display = 'none';
+            }
         }
 
         // Update UI based on sign-in status
         function updateSignInStatus() {
             const signOutBtn = document.getElementById('signOutBtn');
-            if (isSignedIn) {
+            if (isSignedIn && authInstance) {
                 signOutBtn.style.display = 'inline-block';
             } else {
                 signOutBtn.style.display = 'none';
