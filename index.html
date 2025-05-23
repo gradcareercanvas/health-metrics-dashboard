@@ -14,6 +14,41 @@
             max-width: 800px;
             margin: 0 auto;
         }
+        .config-section {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .config-section h3 {
+            margin-top: 0;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -74,129 +109,323 @@
     <div class="dashboard">
         <h1>Avg Vitals by Age Groups</h1>
         
-        <div class="buttons">
-            <button onclick="showAllMetrics()">Show All Metrics</button>
-            <button onclick="showBloodPressure()">Blood Pressure</button>
-            <button onclick="showHeartMetrics()">Heart Metrics</button>
-            <button onclick="showBodyMetrics()">Body Metrics</button>
+        <!-- Configuration Section -->
+        <div class="config-section">
+            <h3>Google Sheets Configuration</h3>
+            <div class="input-group">
+                <label for="clientId">OAuth Client ID:</label>
+                <input type="text" id="clientId" placeholder="Enter your OAuth Client ID">
+            </div>
+            <div class="input-group">
+                <label for="sheetId">Google Sheet ID:</label>
+                <input type="text" id="sheetId" placeholder="Enter your Google Sheet ID">
+            </div>
+            <div class="input-group">
+                <label for="sheetRange">Sheet Range (e.g., Sheet1!A1:H5):</label>
+                <input type="text" id="sheetRange" value="Sheet1!A1:H5" placeholder="Sheet1!A1:H5">
+            </div>
+            <button onclick="authorizeAndLoad()" style="margin-top: 10px;">Connect to Google Sheets</button>
+            <button onclick="loadSampleData()" style="margin-top: 10px; background-color: #FF9800;">Load Sample Data</button>
+            <button onclick="signOut()" style="margin-top: 10px; background-color: #f44336; display: none;" id="signOutBtn">Sign Out</button>
         </div>
+
+        <div id="loadingMessage" class="loading" style="display: none;">
+            Loading data from Google Sheets...
+        </div>
+
+        <div id="errorMessage" class="error" style="display: none;"></div>
         
-        <table id="metricsTable">
-            <thead>
-                <tr>
-                    <th onclick="sortTable(0)">Age Group</th>
-                    <th onclick="sortTable(1)">Systolic BP</th>
-                    <th onclick="sortTable(2)">Diastolic BP</th>
-                    <th onclick="sortTable(3)">Heart Rate</th>
-                    <th onclick="sortTable(4)">BMI</th>
-                    <th onclick="sortTable(5)">SpO2</th>
-                    <th onclick="sortTable(6)">Stress</th>
-                    <th onclick="sortTable(7)">HRV (SDNN)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>0-18</td>
-                    <td>114.6563</td>
-                    <td>77.8866</td>
-                    <td>80.78</td>
-                    <td>24.63</td>
-                    <td>98.26</td>
-                    <td>3.04</td>
-                    <td>39.13</td>
-                </tr>
-                <tr>
-                    <td>19-35</td>
-                    <td>115.7056</td>
-                    <td>80.1619</td>
-                    <td>80.35</td>
-                    <td>26.01</td>
-                    <td>98.27</td>
-                    <td>3.06</td>
-                    <td>38.22</td>
-                </tr>
-                <tr>
-                    <td>36-50</td>
-                    <td>119.7857</td>
-                    <td>84.1413</td>
-                    <td>80.71</td>
-                    <td>28.42</td>
-                    <td>98.41</td>
-                    <td>3.23</td>
-                    <td>32.43</td>
-                </tr>
-                <tr>
-                    <td>51+</td>
-                    <td>122.7211</td>
-                    <td>84.2559</td>
-                    <td>78.96</td>
-                    <td>29.85</td>
-                    <td>98.13</td>
-                    <td>3.24</td>
-                    <td>31.53</td>
-                </tr>
-            </tbody>
-        </table>
-        
-        <div>
-            <h3>Visualization</h3>
+        <div id="dashboardContent" style="display: none;">
             <div class="buttons">
-                <button id="systolicBtn" onclick="visualizeMetric(1)" class="active">Systolic BP</button>
-                <button id="diastolicBtn" onclick="visualizeMetric(2)">Diastolic BP</button>
-                <button id="heartRateBtn" onclick="visualizeMetric(3)">Heart Rate</button>
-                <button id="bmiBtn" onclick="visualizeMetric(4)">BMI</button>
-                <button id="spo2Btn" onclick="visualizeMetric(5)">SpO2</button>
-                <button id="stressBtn" onclick="visualizeMetric(6)">Stress</button>
-                <button id="hrvBtn" onclick="visualizeMetric(7)">HRV</button>
+                <button onclick="showAllMetrics()">Show All Metrics</button>
+                <button onclick="showBloodPressure()">Blood Pressure</button>
+                <button onclick="showHeartMetrics()">Heart Metrics</button>
+                <button onclick="showBodyMetrics()">Body Metrics</button>
             </div>
             
-            <div id="chartContainer" class="chart-container">
-                <!-- Bars will be added here dynamically -->
+            <table id="metricsTable">
+                <thead>
+                    <tr id="tableHeaders">
+                        <!-- Headers will be populated dynamically -->
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data will be populated dynamically -->
+                </tbody>
+            </table>
+            
+            <div>
+                <h3>Visualization</h3>
+                <div class="buttons" id="visualizationButtons">
+                    <!-- Visualization buttons will be populated dynamically -->
+                </div>
+                
+                <div id="chartContainer" class="chart-container">
+                    <!-- Bars will be added here dynamically -->
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Google API Script -->
+    <script src="https://apis.google.com/js/api.js"></script>
     <script>
+        let currentData = [];
+        let currentHeaders = [];
+        let isSignedIn = false;
+
+        // Google API configuration
+        const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+
+        // Initialize Google API
+        async function initializeGapi() {
+            await gapi.load('auth2', initAuth);
+        }
+
+        async function initAuth() {
+            const clientId = document.getElementById('clientId').value;
+            if (!clientId) {
+                showError('Please enter your OAuth Client ID');
+                return;
+            }
+
+            try {
+                await gapi.load('client:auth2', async () => {
+                    await gapi.client.init({
+                        discoveryDocs: [DISCOVERY_DOC],
+                        clientId: clientId,
+                        scope: SCOPES
+                    });
+                    
+                    const authInstance = gapi.auth2.getAuthInstance();
+                    isSignedIn = authInstance.isSignedIn.get();
+                    updateSignInStatus();
+                });
+            } catch (error) {
+                showError('Failed to initialize Google API: ' + error.message);
+            }
+        }
+
+        // Function to authorize and load data
+        async function authorizeAndLoad() {
+            const clientId = document.getElementById('clientId').value;
+            if (!clientId) {
+                showError('Please enter your OAuth Client ID');
+                return;
+            }
+
+            try {
+                await initializeGapi();
+                
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (!authInstance.isSignedIn.get()) {
+                    await authInstance.signIn();
+                }
+                
+                await loadDataFromGoogleSheets();
+                updateSignInStatus();
+                
+            } catch (error) {
+                console.error('Authorization error:', error);
+                showError('Authorization failed: ' + error.message);
+            }
+        }
+
+        // Function to load data from Google Sheets using OAuth
+        async function loadDataFromGoogleSheets() {
+            const sheetId = document.getElementById('sheetId').value;
+            const sheetRange = document.getElementById('sheetRange').value;
+
+            if (!sheetId) {
+                showError('Please enter Sheet ID');
+                return;
+            }
+
+            showLoading(true);
+            hideError();
+
+            try {
+                const response = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: sheetId,
+                    range: sheetRange,
+                });
+                
+                const data = response.result;
+                
+                if (!data.values || data.values.length === 0) {
+                    throw new Error('No data found in the specified range');
+                }
+
+                processGoogleSheetsData(data.values);
+                showDashboard();
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showError('Error loading data: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Function to sign out
+        async function signOut() {
+            const authInstance = gapi.auth2.getAuthInstance();
+            await authInstance.signOut();
+            isSignedIn = false;
+            updateSignInStatus();
+            document.getElementById('dashboardContent').style.display = 'none';
+        }
+
+        // Update UI based on sign-in status
+        function updateSignInStatus() {
+            const signOutBtn = document.getElementById('signOutBtn');
+            if (isSignedIn) {
+                signOutBtn.style.display = 'inline-block';
+            } else {
+                signOutBtn.style.display = 'none';
+            }
+        }
+
+        // Function to load sample data for testing
+        function loadSampleData() {
+            const sampleData = [
+                ['Age Group', 'Systolic BP', 'Diastolic BP', 'Heart Rate', 'BMI', 'SpO2', 'Stress', 'HRV (SDNN)'],
+                ['0-18', '114.6563', '77.8866', '80.78', '24.63', '98.26', '3.04', '39.13'],
+                ['19-35', '115.7056', '80.1619', '80.35', '26.01', '98.27', '3.06', '38.22'],
+                ['36-50', '119.7857', '84.1413', '80.71', '28.42', '98.41', '3.23', '32.43'],
+                ['51+', '122.7211', '84.2559', '78.96', '29.85', '98.13', '3.24', '31.53']
+            ];
+            
+            processGoogleSheetsData(sampleData);
+            showDashboard();
+        }
+
+        // Function to process the data from Google Sheets
+        function processGoogleSheetsData(data) {
+            if (data.length < 2) {
+                throw new Error('Data must have at least headers and one row');
+            }
+
+            currentHeaders = data[0];
+            currentData = data.slice(1);
+
+            // Update table headers
+            const headerRow = document.getElementById('tableHeaders');
+            headerRow.innerHTML = '';
+            currentHeaders.forEach((header, index) => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                th.onclick = () => sortTable(index);
+                headerRow.appendChild(th);
+            });
+
+            // Update table body
+            updateTableBody();
+
+            // Update visualization buttons
+            updateVisualizationButtons();
+
+            // Initialize with first numeric column visualization
+            const firstNumericColumn = findFirstNumericColumn();
+            if (firstNumericColumn > 0) {
+                visualizeMetric(firstNumericColumn);
+            }
+        }
+
+        // Function to update table body
+        function updateTableBody() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            currentData.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Function to update visualization buttons
+        function updateVisualizationButtons() {
+            const buttonsContainer = document.getElementById('visualizationButtons');
+            buttonsContainer.innerHTML = '';
+
+            currentHeaders.forEach((header, index) => {
+                if (index > 0) { // Skip first column (assumed to be categories)
+                    const button = document.createElement('button');
+                    button.textContent = header;
+                    button.id = `metric${index}Btn`;
+                    button.onclick = () => visualizeMetric(index);
+                    if (index === 1) button.classList.add('active');
+                    buttonsContainer.appendChild(button);
+                }
+            });
+        }
+
+        // Function to find first numeric column
+        function findFirstNumericColumn() {
+            for (let i = 1; i < currentHeaders.length; i++) {
+                if (currentData.length > 0 && !isNaN(parseFloat(currentData[0][i]))) {
+                    return i;
+                }
+            }
+            return 1; // Default to second column
+        }
+
+        // Utility functions
+        function showLoading(show) {
+            document.getElementById('loadingMessage').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        function showDashboard() {
+            document.getElementById('dashboardContent').style.display = 'block';
+        }
+
         // Function to sort the table
         function sortTable(n) {
-            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-            table = document.getElementById("metricsTable");
-            switching = true;
-            dir = "asc";
+            let switching = true;
+            let dir = "asc";
+            let switchcount = 0;
+            const table = document.getElementById("metricsTable");
             
             while (switching) {
                 switching = false;
-                rows = table.rows;
+                const rows = table.rows;
                 
-                for (i = 1; i < (rows.length - 1); i++) {
-                    shouldSwitch = false;
-                    x = rows[i].getElementsByTagName("TD")[n];
-                    y = rows[i + 1].getElementsByTagName("TD")[n];
+                for (let i = 1; i < (rows.length - 1); i++) {
+                    let shouldSwitch = false;
+                    const x = rows[i].getElementsByTagName("TD")[n];
+                    const y = rows[i + 1].getElementsByTagName("TD")[n];
                     
-                    if (dir == "asc") {
-                        if (n === 0) {
-                            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-                                shouldSwitch = true;
-                                break;
-                            }
-                        } else {
-                            if (parseFloat(x.innerHTML.replace(',', '')) > parseFloat(y.innerHTML.replace(',', ''))) {
-                                shouldSwitch = true;
-                                break;
-                            }
-                        }
-                    } else if (dir == "desc") {
-                        if (n === 0) {
-                            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-                                shouldSwitch = true;
-                                break;
-                            }
-                        } else {
-                            if (parseFloat(x.innerHTML.replace(',', '')) < parseFloat(y.innerHTML.replace(',', ''))) {
-                                shouldSwitch = true;
-                                break;
-                            }
-                        }
+                    let xValue, yValue;
+                    if (n === 0) {
+                        xValue = x.innerHTML.toLowerCase();
+                        yValue = y.innerHTML.toLowerCase();
+                    } else {
+                        xValue = parseFloat(x.innerHTML.replace(',', '')) || 0;
+                        yValue = parseFloat(y.innerHTML.replace(',', '')) || 0;
+                    }
+                    
+                    if (dir === "asc" && xValue > yValue) {
+                        shouldSwitch = true;
+                        break;
+                    } else if (dir === "desc" && xValue < yValue) {
+                        shouldSwitch = true;
+                        break;
                     }
                 }
                 
@@ -205,7 +434,7 @@
                     switching = true;
                     switchcount++;
                 } else {
-                    if (switchcount == 0 && dir == "asc") {
+                    if (switchcount === 0 && dir === "asc") {
                         dir = "desc";
                         switching = true;
                     }
@@ -213,158 +442,99 @@
             }
         }
         
-        // Function to show/hide columns
+        // Column visibility functions
         function showAllMetrics() {
-            var table = document.getElementById("metricsTable");
-            var rows = table.getElementsByTagName("tr");
+            const table = document.getElementById("metricsTable");
+            const rows = table.getElementsByTagName("tr");
             
-            for (var i = 0; i < rows.length; i++) {
-                var cells = rows[i].getElementsByTagName("td");
-                var headers = rows[i].getElementsByTagName("th");
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName("td");
+                const headers = rows[i].getElementsByTagName("th");
                 
-                for (var j = 0; j < cells.length; j++) {
-                    cells[j].style.display = "";
-                }
-                
-                for (var j = 0; j < headers.length; j++) {
-                    headers[j].style.display = "";
-                }
+                [...cells, ...headers].forEach(cell => {
+                    cell.style.display = "";
+                });
             }
         }
         
         function showBloodPressure() {
-            var table = document.getElementById("metricsTable");
-            var rows = table.getElementsByTagName("tr");
-            
-            for (var i = 0; i < rows.length; i++) {
-                var cells = rows[i].getElementsByTagName("td");
-                var headers = rows[i].getElementsByTagName("th");
-                
-                for (var j = 0; j < cells.length; j++) {
-                    if (j === 0 || j === 1 || j === 2) {
-                        cells[j].style.display = "";
-                    } else {
-                        cells[j].style.display = "none";
-                    }
-                }
-                
-                for (var j = 0; j < headers.length; j++) {
-                    if (j === 0 || j === 1 || j === 2) {
-                        headers[j].style.display = "";
-                    } else {
-                        headers[j].style.display = "none";
-                    }
-                }
-            }
+            showSpecificColumns([0, 1, 2]); // Age Group, Systolic BP, Diastolic BP
         }
         
         function showHeartMetrics() {
-            var table = document.getElementById("metricsTable");
-            var rows = table.getElementsByTagName("tr");
-            
-            for (var i = 0; i < rows.length; i++) {
-                var cells = rows[i].getElementsByTagName("td");
-                var headers = rows[i].getElementsByTagName("th");
-                
-                for (var j = 0; j < cells.length; j++) {
-                    if (j === 0 || j === 3 || j === 5 || j === 7) {
-                        cells[j].style.display = "";
-                    } else {
-                        cells[j].style.display = "none";
-                    }
-                }
-                
-                for (var j = 0; j < headers.length; j++) {
-                    if (j === 0 || j === 3 || j === 5 || j === 7) {
-                        headers[j].style.display = "";
-                    } else {
-                        headers[j].style.display = "none";
-                    }
-                }
-            }
+            showSpecificColumns([0, 3, 5, 7]); // Age Group, Heart Rate, SpO2, HRV
         }
         
         function showBodyMetrics() {
-            var table = document.getElementById("metricsTable");
-            var rows = table.getElementsByTagName("tr");
+            showSpecificColumns([0, 4, 6]); // Age Group, BMI, Stress
+        }
+
+        function showSpecificColumns(columnIndices) {
+            const table = document.getElementById("metricsTable");
+            const rows = table.getElementsByTagName("tr");
             
-            for (var i = 0; i < rows.length; i++) {
-                var cells = rows[i].getElementsByTagName("td");
-                var headers = rows[i].getElementsByTagName("th");
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName("td");
+                const headers = rows[i].getElementsByTagName("th");
                 
-                for (var j = 0; j < cells.length; j++) {
-                    if (j === 0 || j === 4 || j === 6) {
-                        cells[j].style.display = "";
-                    } else {
-                        cells[j].style.display = "none";
-                    }
-                }
-                
-                for (var j = 0; j < headers.length; j++) {
-                    if (j === 0 || j === 4 || j === 6) {
-                        headers[j].style.display = "";
-                    } else {
-                        headers[j].style.display = "none";
-                    }
-                }
+                [...cells, ...headers].forEach((cell, index) => {
+                    cell.style.display = columnIndices.includes(index) ? "" : "none";
+                });
             }
         }
         
         // Function to visualize a metric as a bar chart
         function visualizeMetric(colIndex) {
             // Update active button
-            const buttons = document.querySelectorAll('.buttons button');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            document.getElementById(['systolicBtn', 'diastolicBtn', 'heartRateBtn', 'bmiBtn', 'spo2Btn', 'stressBtn', 'hrvBtn'][colIndex-1]).classList.add('active');
+            document.querySelectorAll('#visualizationButtons button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`metric${colIndex}Btn`).classList.add('active');
             
-            // Get data from table
-            var table = document.getElementById("metricsTable");
-            var rows = table.getElementsByTagName("tr");
-            var data = [];
-            
-            for (var i = 1; i < rows.length; i++) {
-                var cells = rows[i].getElementsByTagName("td");
-                data.push({
-                    ageGroup: cells[0].innerText,
-                    value: parseFloat(cells[colIndex].innerText)
-                });
-            }
+            // Get data from current data array
+            const data = currentData.map(row => ({
+                category: row[0],
+                value: parseFloat(row[colIndex]) || 0
+            }));
             
             // Find min and max values for scaling
-            var values = data.map(item => item.value);
-            var minValue = Math.min(...values);
-            var maxValue = Math.max(...values);
+            const values = data.map(item => item.value);
+            const minValue = Math.min(...values);
+            const maxValue = Math.max(...values);
             
             // Clear previous chart
-            var chartContainer = document.getElementById("chartContainer");
+            const chartContainer = document.getElementById("chartContainer");
             chartContainer.innerHTML = "";
             
             // Create bars
-            var barWidth = 100 / data.length;
+            const barWidth = 100 / data.length;
             
-            for (var i = 0; i < data.length; i++) {
-                var normalizedHeight = ((data[i].value - minValue) / (maxValue - minValue)) * 80 + 20;
+            data.forEach((item, i) => {
+                const normalizedHeight = maxValue > minValue 
+                    ? ((item.value - minValue) / (maxValue - minValue)) * 80 + 20
+                    : 50; // Default height if all values are the same
                 
-                var bar = document.createElement("div");
+                const bar = document.createElement("div");
                 bar.className = "bar";
                 bar.style.left = (i * barWidth) + "%";
                 bar.style.width = (barWidth - 2) + "%";
                 bar.style.height = normalizedHeight + "%";
                 
-                // Different colors based on age group
-                var colors = ["#4CAF50", "#2196F3", "#FF9800", "#E91E63"];
-                bar.style.backgroundColor = colors[i];
+                // Different colors based on index
+                const colors = ["#4CAF50", "#2196F3", "#FF9800", "#E91E63", "#9C27B0", "#607D8B"];
+                bar.style.backgroundColor = colors[i % colors.length];
                 
                 // Add label and value
-                bar.innerHTML = data[i].ageGroup + "<br>" + data[i].value.toFixed(2);
+                bar.innerHTML = `${item.category}<br>${item.value.toFixed(2)}`;
                 
                 chartContainer.appendChild(bar);
-            }
+            });
         }
-        
-        // Initialize with systolic BP visualization
+
+        // Initialize the page
         window.onload = function() {
-            visualizeMetric(1);
+            // Load sample data by default for demonstration
+            loadSampleData();
         };
     </script>
 </body>
