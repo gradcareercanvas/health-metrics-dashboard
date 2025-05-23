@@ -179,38 +179,59 @@
         const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
         const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 
-        // Initialize Google API - Fixed version
+        // Initialize Google API - Improved version
         async function initializeGapi() {
             return new Promise((resolve, reject) => {
+                if (typeof gapi === 'undefined') {
+                    reject(new Error('Google API not loaded'));
+                    return;
+                }
+
                 gapi.load('client:auth2', async () => {
                     try {
-                        const clientId = document.getElementById('clientId').value;
+                        const clientId = document.getElementById('clientId').value.trim();
                         if (!clientId) {
-                            throw new Error('Please enter your OAuth Client ID');
+                            reject(new Error('Please enter your OAuth Client ID'));
+                            return;
                         }
 
+                        // Initialize the client
                         await gapi.client.init({
                             discoveryDocs: [DISCOVERY_DOC],
                             clientId: clientId,
                             scope: SCOPES
                         });
                         
+                        // Get auth instance
                         authInstance = gapi.auth2.getAuthInstance();
+                        if (!authInstance) {
+                            reject(new Error('Failed to initialize Google Auth'));
+                            return;
+                        }
+                        
                         isSignedIn = authInstance.isSignedIn.get();
                         updateSignInStatus();
                         resolve();
                     } catch (error) {
                         reject(error);
                     }
+                }, (error) => {
+                    reject(new Error('Failed to load Google API libraries: ' + error));
                 });
             });
         }
 
-        // Function to authorize and load data - Fixed version
+        // Function to authorize and load data - Improved version
         async function authorizeAndLoad() {
-            const clientId = document.getElementById('clientId').value;
+            const clientId = document.getElementById('clientId').value.trim();
             if (!clientId) {
                 showError('Please enter your OAuth Client ID');
+                return;
+            }
+
+            const sheetId = document.getElementById('sheetId').value.trim();
+            if (!sheetId) {
+                showError('Please enter your Google Sheet ID');
                 return;
             }
 
@@ -218,11 +239,19 @@
             hideError();
 
             try {
+                // Check if Google API is loaded
+                if (typeof gapi === 'undefined') {
+                    throw new Error('Google API not loaded. Please refresh the page and try again.');
+                }
+
                 // Initialize the API first
                 await initializeGapi();
                 
                 // Check if already signed in, if not, sign in
-                if (!authInstance.isSignedIn.get()) {
+                if (!authInstance || !authInstance.isSignedIn.get()) {
+                    if (!authInstance) {
+                        throw new Error('Authentication not initialized');
+                    }
                     await authInstance.signIn();
                 }
                 
@@ -232,32 +261,52 @@
                 
             } catch (error) {
                 console.error('Authorization error:', error);
-                showError('Authorization failed: ' + error.message);
+                let errorMessage = 'Authorization failed';
+                if (error && error.message) {
+                    errorMessage += ': ' + error.message;
+                } else if (error && typeof error === 'string') {
+                    errorMessage += ': ' + error;
+                } else {
+                    errorMessage += '. Please check your Client ID and try again.';
+                }
+                showError(errorMessage);
             } finally {
                 showLoading(false);
             }
         }
 
-        // Function to load data from Google Sheets using OAuth
+        // Function to load data from Google Sheets using OAuth - Improved version
         async function loadDataFromGoogleSheets() {
-            const sheetId = document.getElementById('sheetId').value;
-            const sheetRange = document.getElementById('sheetRange').value;
+            const sheetId = document.getElementById('sheetId').value.trim();
+            const sheetRange = document.getElementById('sheetRange').value.trim();
 
             if (!sheetId) {
-                showError('Please enter Sheet ID');
-                return;
+                throw new Error('Please enter Sheet ID');
+            }
+
+            if (!sheetRange) {
+                throw new Error('Please enter Sheet Range');
             }
 
             try {
+                // Check if client is initialized
+                if (!gapi.client || !gapi.client.sheets) {
+                    throw new Error('Google Sheets API not initialized');
+                }
+
                 const response = await gapi.client.sheets.spreadsheets.values.get({
                     spreadsheetId: sheetId,
                     range: sheetRange,
                 });
                 
+                if (!response || !response.result) {
+                    throw new Error('No response from Google Sheets API');
+                }
+
                 const data = response.result;
                 
                 if (!data.values || data.values.length === 0) {
-                    throw new Error('No data found in the specified range');
+                    throw new Error('No data found in the specified range. Please check your sheet ID and range.');
                 }
 
                 processGoogleSheetsData(data.values);
@@ -265,7 +314,15 @@
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
-                showError('Error loading data: ' + error.message);
+                if (error.status === 404) {
+                    throw new Error('Sheet not found. Please check your Sheet ID.');
+                } else if (error.status === 403) {
+                    throw new Error('Access denied. Please check your sheet permissions.');
+                } else if (error.status === 400) {
+                    throw new Error('Invalid request. Please check your sheet range format.');
+                } else {
+                    throw new Error('Error loading data: ' + (error.message || 'Unknown error'));
+                }
             }
         }
 
