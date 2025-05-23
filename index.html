@@ -142,7 +142,12 @@
             </div>
             <button onclick="connectToGoogleSheets()" style="margin-top: 10px;">Connect to Google Sheets</button>
             <button onclick="loadSampleData()" style="margin-top: 10px; background-color: #FF9800;">Load Sample Data</button>
+            <button onclick="clearStoredData()" style="margin-top: 10px; background-color: #ff5722;">Clear Data & Reset</button>
             <button onclick="signOut()" style="margin-top: 10px; background-color: #f44336; display: none;" id="signOutBtn">Sign Out</button>
+            
+            <div style="margin-top: 10px; padding: 8px; background-color: #e3f2fd; border-radius: 4px; font-size: 12px;">
+                <strong>Note:</strong> Data persists during this browser session. For permanent storage across sessions, serve this file via HTTP server.
+            </div>
         </div>
 
         <div id="loadingMessage" class="loading" style="display: none;">
@@ -190,6 +195,108 @@
         let currentHeaders = [];
         let isSignedIn = false;
         let gapiInitialized = false;
+
+        // Session storage (in-memory alternative to localStorage)
+        let sessionStorage = {
+            data: null,
+            headers: null,
+            config: null
+        };
+
+        // Save data to session storage
+        function saveDataToStorage() {
+            try {
+                sessionStorage.data = JSON.stringify(currentData);
+                sessionStorage.headers = JSON.stringify(currentHeaders);
+                
+                // Save configuration
+                const config = {
+                    authMethod: document.querySelector('input[name="authMethod"]:checked')?.value,
+                    clientId: document.getElementById('clientId').value,
+                    apiKey: document.getElementById('apiKey').value,
+                    sheetId: document.getElementById('sheetId').value,
+                    sheetRange: document.getElementById('sheetRange').value
+                };
+                sessionStorage.config = JSON.stringify(config);
+                
+                console.log('Data saved to session storage');
+            } catch (error) {
+                console.error('Error saving to session storage:', error);
+            }
+        }
+
+        // Load data from session storage
+        function loadDataFromStorage() {
+            try {
+                if (sessionStorage.data && sessionStorage.headers) {
+                    currentData = JSON.parse(sessionStorage.data);
+                    currentHeaders = JSON.parse(sessionStorage.headers);
+                    
+                    // Restore the dashboard
+                    updateTableHeaders();
+                    updateTableBody();
+                    updateVisualizationButtons();
+                    showDashboard();
+                    
+                    const firstNumericColumn = findFirstNumericColumn();
+                    if (firstNumericColumn > 0) {
+                        visualizeMetric(firstNumericColumn);
+                    }
+                    
+                    console.log('Data loaded from session storage');
+                    return true;
+                }
+
+                if (sessionStorage.config) {
+                    const config = JSON.parse(sessionStorage.config);
+                    
+                    // Restore form values
+                    if (config.authMethod) {
+                        const authRadio = document.querySelector(`input[name="authMethod"][value="${config.authMethod}"]`);
+                        if (authRadio) {
+                            authRadio.checked = true;
+                            authRadio.dispatchEvent(new Event('change'));
+                        }
+                    }
+                    if (config.clientId) document.getElementById('clientId').value = config.clientId;
+                    if (config.apiKey) document.getElementById('apiKey').value = config.apiKey;
+                    if (config.sheetId) document.getElementById('sheetId').value = config.sheetId;
+                    if (config.sheetRange) document.getElementById('sheetRange').value = config.sheetRange;
+                    
+                    console.log('Configuration restored from session storage');
+                }
+                
+                return false;
+            } catch (error) {
+                console.error('Error loading from session storage:', error);
+                return false;
+            }
+        }
+
+        // Clear stored data
+        function clearStoredData() {
+            try {
+                sessionStorage.data = null;
+                sessionStorage.headers = null;
+                sessionStorage.config = null;
+                
+                // Clear the dashboard
+                document.getElementById('dashboardContent').style.display = 'none';
+                
+                // Reset form
+                document.getElementById('clientId').value = '';
+                document.getElementById('apiKey').value = '';
+                document.getElementById('sheetId').value = '';
+                document.getElementById('sheetRange').value = 'Sheet1!A1:H5';
+                
+                console.log('Session data cleared');
+                
+                // Load sample data after clearing
+                loadSampleData();
+            } catch (error) {
+                console.error('Error clearing session storage:', error);
+            }
+        }
 
         // Google API configuration
         const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
@@ -402,6 +509,26 @@
             currentData = data.slice(1);
 
             // Update table headers
+            updateTableHeaders();
+
+            // Update table body
+            updateTableBody();
+
+            // Update visualization buttons
+            updateVisualizationButtons();
+
+            // Save data to localStorage
+            saveDataToStorage();
+
+            // Initialize with first numeric column visualization
+            const firstNumericColumn = findFirstNumericColumn();
+            if (firstNumericColumn > 0) {
+                visualizeMetric(firstNumericColumn);
+            }
+        }
+
+        // Function to update table headers
+        function updateTableHeaders() {
             const headerRow = document.getElementById('tableHeaders');
             headerRow.innerHTML = '';
             currentHeaders.forEach((header, index) => {
@@ -410,18 +537,6 @@
                 th.onclick = () => sortTable(index);
                 headerRow.appendChild(th);
             });
-
-            // Update table body
-            updateTableBody();
-
-            // Update visualization buttons
-            updateVisualizationButtons();
-
-            // Initialize with first numeric column visualization
-            const firstNumericColumn = findFirstNumericColumn();
-            if (firstNumericColumn > 0) {
-                visualizeMetric(firstNumericColumn);
-            }
         }
 
         // Function to update table body
