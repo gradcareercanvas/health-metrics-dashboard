@@ -290,7 +290,7 @@
         let isSignedIn = false;
         let gapiInitialized = false;
         let storageAvailable = false;
-        let isConfigExpanded = true;
+        let isConfigExpanded = false;
         let protectionPasswordHash = null;
         let fieldsLocked = true;
 
@@ -1045,12 +1045,12 @@
                 loadSampleData();
             }
             
-            // Initialize configuration section as expanded
+            // Initialize configuration section as collapsed
             const configContent = document.getElementById('configContent');
             const arrow = document.getElementById('configArrow');
-            configContent.classList.remove('collapsed');
-            arrow.classList.add('expanded');
-            arrow.textContent = '▲';
+            configContent.classList.add('collapsed');
+            arrow.classList.remove('expanded');
+            arrow.textContent = '▼';
         };
     </script>
 </body>
