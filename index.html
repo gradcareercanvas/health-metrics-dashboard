@@ -124,6 +124,53 @@
             background-color: #ffebee;
             color: #c62828;
         }
+        .config-header {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .dropdown-arrow {
+            margin-left: 10px;
+            transition: transform 0.3s ease;
+            font-size: 14px;
+        }
+        .dropdown-arrow.expanded {
+            transform: rotate(180deg);
+        }
+        .config-content {
+            margin-top: 15px;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+        .config-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+        }
+        .password-section {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .password-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .password-controls input {
+            flex: 1;
+        }
+        .lock-icon {
+            margin-right: 5px;
+        }
+        .locked {
+            opacity: 0.5;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -132,42 +179,68 @@
         
         <!-- Configuration Section -->
         <div class="config-section">
-            <h3>Google Sheets Configuration</h3>
-            <p><strong>Choose Authentication Method:</strong></p>
-            <div style="margin-bottom: 15px;">
-                <label><input type="radio" name="authMethod" value="oauth" checked> OAuth (Recommended)</label><br>
-                <label><input type="radio" name="authMethod" value="apikey"> API Key (Simpler, requires public sheet)</label>
+            <div class="config-header" onclick="toggleConfigSection()">
+                <h3 style="margin: 0;">Google Sheets Configuration</h3>
+                <span class="dropdown-arrow" id="configArrow">▼</span>
             </div>
             
-            <div id="oauthConfig">
-                <div class="input-group">
-                    <label for="clientId">OAuth Client ID:</label>
-                    <input type="text" id="clientId" placeholder="Enter your OAuth Client ID">
+            <div class="config-content" id="configContent">
+                <!-- Password Protection Section -->
+                <div class="password-section">
+                    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                        <span class="lock-icon">🔒</span>
+                        <strong>API Security</strong>
+                    </div>
+                    <p style="margin: 5px 0; font-size: 12px;">Set a password to protect your API credentials from being viewed or copied.</p>
+                    
+                    <div class="password-controls">
+                        <input type="password" id="protectionPassword" placeholder="Enter protection password">
+                        <button onclick="setPassword()" style="background-color: #2196F3;">Set Password</button>
+                        <button onclick="unlockFields()" style="background-color: #4CAF50;" id="unlockBtn">Unlock</button>
+                        <button onclick="lockFields()" style="background-color: #ff5722;" id="lockBtn">Lock</button>
+                        <button onclick="resetPasswordProtection()" style="background-color: #9E9E9E; font-size: 11px;" title="Remove password protection">Reset</button>
+                    </div>
+                    <div id="passwordStatus" style="margin-top: 5px; font-size: 12px;"></div>
                 </div>
-            </div>
-            
-            <div id="apikeyConfig" style="display: none;">
-                <div class="input-group">
-                    <label for="apiKey">Google Sheets API Key:</label>
-                    <input type="password" id="apiKey" placeholder="Enter your Google Sheets API key">
+
+                <p><strong>Choose Authentication Method:</strong></p>
+                <div style="margin-bottom: 15px;">
+                    <label><input type="radio" name="authMethod" value="oauth" checked> OAuth (Recommended)</label><br>
+                    <label><input type="radio" name="authMethod" value="apikey"> API Key (Simpler, requires public sheet)</label>
                 </div>
-            </div>
-            
-            <div class="input-group">
-                <label for="sheetId">Google Sheet ID:</label>
-                <input type="text" id="sheetId" placeholder="Enter your Google Sheet ID">
-            </div>
-            <div class="input-group">
-                <label for="sheetRange">Sheet Range (e.g., Sheet1!A1:H5):</label>
-                <input type="text" id="sheetRange" value="Sheet1!A1:H5" placeholder="Sheet1!A1:H5">
-            </div>
-            <button onclick="connectToGoogleSheets()" style="margin-top: 10px;">Connect to Google Sheets</button>
-            <button onclick="loadSampleData()" style="margin-top: 10px; background-color: #FF9800;">Load Sample Data</button>
-            <button onclick="clearStoredData()" style="margin-top: 10px; background-color: #ff5722;">Clear Data & Reset</button>
-            <button onclick="signOut()" style="margin-top: 10px; background-color: #f44336; display: none;" id="signOutBtn">Sign Out</button>
-            
-            <div id="storageStatus" class="storage-status">
-                <!-- Storage status will be populated here -->
+                
+                <div id="oauthConfig">
+                    <div class="input-group">
+                        <label for="clientId">OAuth Client ID:</label>
+                        <input type="text" id="clientId" placeholder="Enter your OAuth Client ID" readonly>
+                        <div style="font-size: 11px; color: #666; margin-top: 3px;">🔒 Protected field - unlock to edit</div>
+                    </div>
+                </div>
+                
+                <div id="apikeyConfig" style="display: none;">
+                    <div class="input-group">
+                        <label for="apiKey">Google Sheets API Key:</label>
+                        <input type="password" id="apiKey" placeholder="Enter your Google Sheets API key" readonly>
+                        <div style="font-size: 11px; color: #666; margin-top: 3px;">🔒 Protected field - unlock to edit</div>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="sheetId">Google Sheet ID:</label>
+                    <input type="text" id="sheetId" placeholder="Enter your Google Sheet ID">
+                </div>
+                <div class="input-group">
+                    <label for="sheetRange">Sheet Range (e.g., Sheet1!A1:H5):</label>
+                    <input type="text" id="sheetRange" value="Sheet1!A1:H5" placeholder="Sheet1!A1:H5">
+                </div>
+                <button onclick="connectToGoogleSheets()" style="margin-top: 10px;">Connect to Google Sheets</button>
+                <button onclick="loadSampleData()" style="margin-top: 10px; background-color: #FF9800;">Load Sample Data</button>
+                <button onclick="clearStoredData()" style="margin-top: 10px; background-color: #ff5722;">Clear Data & Reset</button>
+                <button onclick="signOut()" style="margin-top: 10px; background-color: #f44336; display: none;" id="signOutBtn">Sign Out</button>
+                
+                <div id="storageStatus" class="storage-status">
+                    <!-- Storage status will be populated here -->
+                </div>
             </div>
         </div>
 
@@ -218,8 +291,165 @@
         let isSignedIn = false;
         let gapiInitialized = false;
         let storageAvailable = false;
+        let isConfigExpanded = true;
+        let protectionPasswordHash = null;
+        let fieldsLocked = true;
 
-        // Check if localStorage is available
+        // Simple hash function for password protection
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return hash.toString();
+        }
+
+        // Toggle configuration section
+        function toggleConfigSection() {
+            const configContent = document.getElementById('configContent');
+            const arrow = document.getElementById('configArrow');
+            
+            isConfigExpanded = !isConfigExpanded;
+            
+            if (isConfigExpanded) {
+                configContent.classList.remove('collapsed');
+                arrow.classList.add('expanded');
+                arrow.textContent = '▲';
+            } else {
+                configContent.classList.add('collapsed');
+                arrow.classList.remove('expanded');
+                arrow.textContent = '▼';
+            }
+        }
+
+        // Set protection password
+        function setPassword() {
+            const password = document.getElementById('protectionPassword').value;
+            if (!password) {
+                updatePasswordStatus('Please enter a password', 'error');
+                return;
+            }
+            
+            if (password.length < 4) {
+                updatePasswordStatus('Password must be at least 4 characters', 'error');
+                return;
+            }
+            
+            protectionPasswordHash = simpleHash(password);
+            
+            if (storageAvailable) {
+                localStorage.setItem('protectionPassword', protectionPasswordHash);
+            }
+            
+            document.getElementById('protectionPassword').value = '';
+            updatePasswordStatus('Password set successfully! Fields are now locked.', 'success');
+            lockFields();
+        }
+
+        // Unlock protected fields
+        function unlockFields() {
+            const password = document.getElementById('protectionPassword').value;
+            if (!password) {
+                updatePasswordStatus('Please enter your password', 'error');
+                return;
+            }
+            
+            const inputHash = simpleHash(password);
+            if (inputHash === protectionPasswordHash) {
+                fieldsLocked = false;
+                document.getElementById('apiKey').readOnly = false;
+                document.getElementById('clientId').readOnly = false;
+                document.getElementById('protectionPassword').value = '';
+                updatePasswordStatus('Fields unlocked! You can now edit your credentials.', 'success');
+                
+                // Update button states
+                document.getElementById('unlockBtn').style.display = 'none';
+                document.getElementById('lockBtn').style.display = 'inline-block';
+                
+                // Remove locked styling
+                document.getElementById('apiKey').parentElement.classList.remove('locked');
+                document.getElementById('clientId').parentElement.classList.remove('locked');
+            } else {
+                updatePasswordStatus('Incorrect password', 'error');
+                document.getElementById('protectionPassword').value = '';
+            }
+        }
+
+        // Lock protected fields
+        function lockFields() {
+            fieldsLocked = true;
+            document.getElementById('apiKey').readOnly = true;
+            document.getElementById('clientId').readOnly = true;
+            updatePasswordStatus('Fields are locked and protected.', 'info');
+            
+            // Update button states
+            document.getElementById('unlockBtn').style.display = 'inline-block';
+            document.getElementById('lockBtn').style.display = 'none';
+            
+            // Add locked styling
+            document.getElementById('apiKey').parentElement.classList.add('locked');
+            document.getElementById('clientId').parentElement.classList.add('locked');
+        }
+
+        // Update password status message
+        function updatePasswordStatus(message, type) {
+            const statusDiv = document.getElementById('passwordStatus');
+            statusDiv.textContent = message;
+            statusDiv.style.color = type === 'error' ? '#c62828' : 
+                                   type === 'success' ? '#2e7d32' : '#1976d2';
+            
+            // Clear status after 3 seconds
+            setTimeout(() => {
+                statusDiv.textContent = '';
+            }, 3000);
+        }
+
+        // Load password from storage
+        function loadPasswordFromStorage() {
+            if (storageAvailable) {
+                const savedPasswordHash = localStorage.getItem('protectionPassword');
+                if (savedPasswordHash) {
+                    protectionPasswordHash = savedPasswordHash;
+                    lockFields();
+                    updatePasswordStatus('Password protection is active.', 'info');
+                } else {
+                    // No password set, unlock fields by default
+                    fieldsLocked = false;
+                    document.getElementById('apiKey').readOnly = false;
+                    document.getElementById('clientId').readOnly = false;
+                    document.getElementById('unlockBtn').style.display = 'none';
+                    document.getElementById('lockBtn').style.display = 'none';
+                }
+            }
+        }
+
+        // Reset password protection
+        function resetPasswordProtection() {
+            const confirmReset = confirm('Are you sure you want to remove password protection? This will allow anyone to view and edit your API credentials.');
+            if (confirmReset) {
+                protectionPasswordHash = null;
+                if (storageAvailable) {
+                    localStorage.removeItem('protectionPassword');
+                }
+                
+                // Unlock fields permanently
+                fieldsLocked = false;
+                document.getElementById('apiKey').readOnly = false;
+                document.getElementById('clientId').readOnly = false;
+                
+                // Hide lock/unlock buttons
+                document.getElementById('unlockBtn').style.display = 'none';
+                document.getElementById('lockBtn').style.display = 'none';
+                
+                // Remove locked styling
+                document.getElementById('apiKey').parentElement.classList.remove('locked');
+                document.getElementById('clientId').parentElement.classList.remove('locked');
+                
+                updatePasswordStatus('Password protection removed. Fields are now permanently unlocked.', 'info');
+            }
+        }
         function checkStorageAvailability() {
             try {
                 const test = 'storageTest';
@@ -336,14 +566,17 @@
                     localStorage.removeItem('sheetsData');
                     localStorage.removeItem('sheetsHeaders');
                     localStorage.removeItem('sheetsConfig');
+                    // Note: We don't clear the protection password unless user explicitly wants to
                 }
                 
                 // Clear the dashboard
                 document.getElementById('dashboardContent').style.display = 'none';
                 
-                // Reset form
-                document.getElementById('clientId').value = '';
-                document.getElementById('apiKey').value = '';
+                // Reset form (only if unlocked)
+                if (!fieldsLocked) {
+                    document.getElementById('clientId').value = '';
+                    document.getElementById('apiKey').value = '';
+                }
                 document.getElementById('sheetId').value = '';
                 document.getElementById('sheetRange').value = 'Sheet1!A1:H5';
                 
@@ -828,6 +1061,9 @@
             checkStorageAvailability();
             updateStorageStatus();
             
+            // Load password protection settings
+            loadPasswordFromStorage();
+            
             // Try to load saved data first
             const dataLoaded = loadDataFromStorage();
             
@@ -835,6 +1071,13 @@
             if (!dataLoaded) {
                 loadSampleData();
             }
+            
+            // Initialize configuration section as expanded
+            const configContent = document.getElementById('configContent');
+            const arrow = document.getElementById('configArrow');
+            configContent.classList.remove('collapsed');
+            arrow.classList.add('expanded');
+            arrow.textContent = '▲';
         };
     </script>
 </body>
