@@ -172,19 +172,24 @@
             opacity: 0.5;
             pointer-events: none;
         }
+        /* Optional: Style for refresh status display */
+        #refreshStatus {
+            font-size: 12px;
+            color: #555;
+            margin-top: 5px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
     <div class="dashboard">
         <h1>Avg Vitals by Age Groups</h1>
-        
         <!-- Configuration Section -->
         <div class="config-section">
             <div class="config-header" onclick="toggleConfigSection()">
                 <h3 style="margin: 0;">Google Sheets Configuration</h3>
                 <span class="dropdown-arrow" id="configArrow">▼</span>
             </div>
-            
             <div class="config-content" id="configContent">
                 <!-- Password Protection Section -->
                 <div class="password-section">
@@ -193,7 +198,6 @@
                         <strong>API Security</strong>
                     </div>
                     <p style="margin: 5px 0; font-size: 12px;">Set a password to protect your API credentials from being viewed or copied.</p>
-                    
                     <div class="password-controls">
                         <input type="password" id="protectionPassword" placeholder="Enter protection password">
                         <button onclick="setPassword()" style="background-color: #2196F3;">Set Password</button>
@@ -202,13 +206,11 @@
                     </div>
                     <div id="passwordStatus" style="margin-top: 5px; font-size: 12px;"></div>
                 </div>
-
                 <p><strong>Choose Authentication Method:</strong></p>
                 <div style="margin-bottom: 15px;">
                     <label><input type="radio" name="authMethod" value="oauth" checked> OAuth (Recommended)</label><br>
                     <label><input type="radio" name="authMethod" value="apikey"> API Key (Simpler, requires public sheet)</label>
                 </div>
-                
                 <div id="oauthConfig">
                     <div class="input-group">
                         <label for="clientId">OAuth Client ID:</label>
@@ -216,7 +218,6 @@
                         <div style="font-size: 11px; color: #666; margin-top: 3px;">🔒 Protected field - unlock to edit</div>
                     </div>
                 </div>
-                
                 <div id="apikeyConfig" style="display: none;">
                     <div class="input-group">
                         <label for="apiKey">Google Sheets API Key:</label>
@@ -224,7 +225,6 @@
                         <div style="font-size: 11px; color: #666; margin-top: 3px;">🔒 Protected field - unlock to edit</div>
                     </div>
                 </div>
-                
                 <div class="input-group">
                     <label for="sheetId">Google Sheet ID:</label>
                     <input type="text" id="sheetId" placeholder="Enter your Google Sheet ID">
@@ -237,20 +237,18 @@
                 <button onclick="loadSampleData()" style="margin-top: 10px; background-color: #FF9800;">Load Sample Data</button>
                 <button onclick="clearStoredData()" style="margin-top: 10px; background-color: #ff5722;">Clear Data & Reset</button>
                 <button onclick="signOut()" style="margin-top: 10px; background-color: #f44336; display: none;" id="signOutBtn">Sign Out</button>
-                
                 <div id="storageStatus" class="storage-status">
                     <!-- Storage status will be populated here -->
                 </div>
+                <!-- Optional: Display refresh status -->
+                <div id="refreshStatus"></div>
             </div>
         </div>
-
         <div id="loadingMessage" class="loading" style="display: none;">
             Loading data from Google Sheets...
         </div>
-
         <div id="errorMessage" class="error" style="display: none;"></div>
         <div id="successMessage" class="success" style="display: none;"></div>
-        
         <div id="dashboardContent" style="display: none;">
             <div class="buttons">
                 <button onclick="showAllMetrics()">Show All Metrics</button>
@@ -258,7 +256,6 @@
                 <button onclick="showHeartMetrics()">Heart Metrics</button>
                 <button onclick="showBodyMetrics()">Body Metrics</button>
             </div>
-            
             <table id="metricsTable">
                 <thead>
                     <tr id="tableHeaders">
@@ -269,20 +266,17 @@
                     <!-- Data will be populated dynamically -->
                 </tbody>
             </table>
-            
             <div>
                 <h3>Visualization</h3>
                 <div class="buttons" id="visualizationButtons">
                     <!-- Visualization buttons will be populated dynamically -->
                 </div>
-                
                 <div id="chartContainer" class="chart-container">
                     <!-- Bars will be added here dynamically -->
                 </div>
             </div>
         </div>
     </div>
-
     <!-- Google API Script -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script>
@@ -294,6 +288,7 @@
         let isConfigExpanded = false;
         let protectionPasswordHash = null;
         let fieldsLocked = true;
+        let refreshTimer = null; // Variable to hold the timer ID
 
         // Simple hash function for password protection
         function simpleHash(str) {
@@ -310,9 +305,7 @@
         function toggleConfigSection() {
             const configContent = document.getElementById('configContent');
             const arrow = document.getElementById('configArrow');
-            
             isConfigExpanded = !isConfigExpanded;
-            
             if (isConfigExpanded) {
                 configContent.classList.remove('collapsed');
                 arrow.classList.add('expanded');
@@ -331,18 +324,14 @@
                 updatePasswordStatus('Please enter a password', 'error');
                 return;
             }
-            
             if (password.length < 4) {
                 updatePasswordStatus('Password must be at least 4 characters', 'error');
                 return;
             }
-            
             protectionPasswordHash = simpleHash(password);
-            
             if (storageAvailable) {
                 localStorage.setItem('protectionPassword', protectionPasswordHash);
             }
-            
             document.getElementById('protectionPassword').value = '';
             updatePasswordStatus('Password set successfully! Fields are now locked.', 'success');
             lockFields();
@@ -355,7 +344,6 @@
                 updatePasswordStatus('Please enter your password', 'error');
                 return;
             }
-            
             const inputHash = simpleHash(password);
             if (inputHash === protectionPasswordHash) {
                 fieldsLocked = false;
@@ -363,11 +351,9 @@
                 document.getElementById('clientId').readOnly = false;
                 document.getElementById('protectionPassword').value = '';
                 updatePasswordStatus('Fields unlocked! You can now edit your credentials.', 'success');
-                
                 // Update button states
                 document.getElementById('unlockBtn').style.display = 'none';
                 document.getElementById('lockBtn').style.display = 'inline-block';
-                
                 // Remove locked styling
                 document.getElementById('apiKey').parentElement.classList.remove('locked');
                 document.getElementById('clientId').parentElement.classList.remove('locked');
@@ -383,11 +369,9 @@
             document.getElementById('apiKey').readOnly = true;
             document.getElementById('clientId').readOnly = true;
             updatePasswordStatus('Fields are locked and protected.', 'info');
-            
             // Update button states
             document.getElementById('unlockBtn').style.display = 'inline-block';
             document.getElementById('lockBtn').style.display = 'none';
-            
             // Add locked styling
             document.getElementById('apiKey').parentElement.classList.add('locked');
             document.getElementById('clientId').parentElement.classList.add('locked');
@@ -399,7 +383,6 @@
             statusDiv.textContent = message;
             statusDiv.style.color = type === 'error' ? '#c62828' : 
                                    type === 'success' ? '#2e7d32' : '#1976d2';
-            
             // Clear status after 3 seconds
             setTimeout(() => {
                 statusDiv.textContent = '';
@@ -424,6 +407,7 @@
                 }
             }
         }
+
         function checkStorageAvailability() {
             try {
                 const test = 'storageTest';
@@ -449,32 +433,216 @@
             }
         }
 
-        // Save data to localStorage (with fallback to memory)
-        function saveDataToStorage() {
-            try {
-                if (storageAvailable) {
-                    localStorage.setItem('sheetsData', JSON.stringify(currentData));
-                    localStorage.setItem('sheetsHeaders', JSON.stringify(currentHeaders));
-                    
-                    // Save configuration
-                    const config = {
-                        authMethod: document.querySelector('input[name="authMethod"]:checked')?.value,
-                        clientId: document.getElementById('clientId').value,
-                        apiKey: document.getElementById('apiKey').value,
-                        sheetId: document.getElementById('sheetId').value,
-                        sheetRange: document.getElementById('sheetRange').value
-                    };
-                    localStorage.setItem('sheetsConfig', JSON.stringify(config));
-                    
-                    showSuccess('Configuration and data saved successfully!');
-                    console.log('Data saved to localStorage');
+        // --- Modified/Added Functions for Refresh ---
+
+        // Function to schedule the next data refresh
+        function scheduleRefresh() {
+            if (refreshTimer) {
+                clearTimeout(refreshTimer); // Clear any existing timer
+            }
+            // Set timeout for 24 hours (in milliseconds)
+            const refreshInterval = 24 * 60 * 60 * 1000;
+            refreshTimer = setTimeout(() => {
+                console.log("Scheduled refresh triggered.");
+                // Determine the current auth method and reload accordingly
+                const authMethod = document.querySelector('input[name="authMethod"]:checked')?.value || 'oauth'; // Default to oauth if not set
+
+                if (authMethod === 'oauth') {
+                    // For OAuth, we need to re-authorize/check sign-in status
+                     authorizeAndLoad().catch(err => console.error("Scheduled OAuth refresh failed:", err));
                 } else {
-                    console.log('localStorage not available - data will not persist across sessions');
+                    // For API Key, we can directly call the load function
+                    loadDataWithApiKey().catch(err => console.error("Scheduled API Key refresh failed:", err));
                 }
-            } catch (error) {
-                console.error('Error saving to localStorage:', error);
+            }, refreshInterval);
+
+            console.log(`Data refresh scheduled for ${(new Date(Date.now() + refreshInterval)).toLocaleString()}`);
+            // Optional: Update UI to show next refresh time
+            updateRefreshStatusUI(refreshInterval);
+        }
+
+        // Function to clear the refresh timer
+        function clearRefreshTimer() {
+            if (refreshTimer) {
+                clearTimeout(refreshTimer);
+                refreshTimer = null;
+                console.log("Scheduled refresh cleared.");
+                document.getElementById('refreshStatus').textContent = ''; // Clear UI status
             }
         }
+
+        // Optional: Update UI element with refresh status
+        function updateRefreshStatusUI(refreshInterval) {
+             const refreshTime = new Date(Date.now() + refreshInterval);
+             document.getElementById('refreshStatus').textContent = `Next auto-refresh: ${refreshTime.toLocaleString()}`;
+        }
+
+        // --- Modified Data Loading and Processing Functions ---
+
+        // Function to authorize and load data
+        async function authorizeAndLoad() {
+            const clientId = document.getElementById('clientId').value;
+            if (!clientId) {
+                showError('Please enter your OAuth Client ID');
+                return;
+            }
+            showLoading(true);
+            hideError();
+            hideSuccess();
+            try {
+                // Initialize gapi if not already done
+                if (!gapiInitialized) {
+                    await new Promise((resolve, reject) => {
+                        gapi.load('client:auth2', {
+                            callback: resolve,
+                            onerror: reject
+                        });
+                    });
+                    await gapi.client.init({
+                        discoveryDocs: [DISCOVERY_DOC],
+                        clientId: clientId,
+                        scope: SCOPES
+                    });
+                    gapiInitialized = true;
+                }
+                const authInstance = gapi.auth2.getAuthInstance();
+                // Check if already signed in
+                if (!authInstance.isSignedIn.get()) {
+                    console.log('Requesting sign-in...');
+                    await authInstance.signIn();
+                }
+                isSignedIn = authInstance.isSignedIn.get();
+                updateSignInStatus();
+                if (isSignedIn) {
+                    await loadDataFromGoogleSheets(); // This will call processGoogleSheetsData internally
+                } else {
+                    throw new Error('Sign-in failed');
+                }
+            } catch (error) {
+                console.error('Authorization error:', error);
+                showError('Authorization failed: ' + error.message + '. Please check your Client ID and make sure the domain is authorized.');
+                // Don't schedule refresh on error
+                clearRefreshTimer();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Function to load data from Google Sheets using OAuth
+        async function loadDataFromGoogleSheets() {
+            const sheetId = document.getElementById('sheetId').value;
+            const sheetRange = document.getElementById('sheetRange').value;
+            if (!sheetId) {
+                showError('Please enter Sheet ID');
+                return;
+            }
+            if (!isSignedIn) {
+                showError('Please sign in first');
+                return;
+            }
+            try {
+                console.log('Fetching data from Google Sheets (OAuth)...');
+                const response = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: sheetId,
+                    range: sheetRange,
+                });
+                const data = response.result;
+                console.log('Data received (OAuth):', data);
+                if (!data.values || data.values.length === 0) {
+                    throw new Error('No data found in the specified range. Please check your sheet ID and range.');
+                }
+                processGoogleSheetsData(data.values, true); // Pass true for API loaded data
+                showDashboard();
+                scheduleRefresh(); // Schedule refresh after successful load
+            } catch (error) {
+                console.error('Error fetching data (OAuth):', error);
+                if (error.status === 403) {
+                    showError('Access denied. Please make sure the sheet is shared or public.');
+                } else if (error.status === 404) {
+                    showError('Sheet not found. Please check your Sheet ID.');
+                } else {
+                    showError('Error loading data: ' + error.message);
+                }
+                // Don't schedule refresh on error
+                clearRefreshTimer();
+            }
+        }
+
+        // API Key method (simpler, for public sheets)
+        async function loadDataWithApiKey() {
+            const apiKey = document.getElementById('apiKey').value;
+            const sheetId = document.getElementById('sheetId').value;
+            const sheetRange = document.getElementById('sheetRange').value;
+            if (!apiKey || !sheetId) {
+                showError('Please enter both API Key and Sheet ID');
+                return;
+            }
+            showLoading(true);
+            hideError();
+            hideSuccess();
+            try {
+                console.log('Fetching data from Google Sheets (API Key)...');
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetRange}?key=${apiKey}`;
+                const response = await fetch(url);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Error: ${errorData.error.message}`);
+                }
+                const data = await response.json();
+                if (!data.values || data.values.length === 0) {
+                    throw new Error('No data found in the specified range');
+                }
+                processGoogleSheetsData(data.values, true); // Pass true for API loaded data
+                showDashboard();
+                scheduleRefresh(); // Schedule refresh after successful load
+            } catch (error) {
+                console.error('Error fetching data (API Key):', error);
+                showError('Error loading data: ' + error.message);
+                // Don't schedule refresh on error
+                clearRefreshTimer();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Modified function to process the data from Google Sheets or Sample
+        // Added isApiData flag to distinguish source if needed later
+        function processGoogleSheetsData(data, isApiData = false) {
+            console.log("Processing data. Source: ", isApiData ? "API" : "Sample");
+            if (data.length < 2) {
+                throw new Error('Data must have at least headers and one row');
+            }
+            currentHeaders = data[0];
+            currentData = data.slice(1);
+
+            // --- Core UI Update Logic (remains the same) ---
+            // Update table headers
+            updateTableHeaders();
+            // Update table body
+            updateTableBody();
+            // Update visualization buttons
+            updateVisualizationButtons();
+            // Save data to localStorage
+            saveDataToStorage();
+            // Initialize with first numeric column visualization
+            const firstNumericColumn = findFirstNumericColumn();
+            if (firstNumericColumn > 0) {
+                visualizeMetric(firstNumericColumn);
+            }
+            // --- End Core UI Update Logic ---
+
+            // Store the timestamp of the last successful data load (only for API data)
+            if (isApiData && storageAvailable) {
+                 try {
+                     localStorage.setItem('lastDataLoadTime', Date.now().toString());
+                     console.log("Last data load time updated in storage.");
+                 } catch (e) {
+                     console.warn("Could not save last data load time to storage:", e);
+                 }
+            }
+        }
+
+        // --- Modified Storage Loading Function ---
 
         // Load data from localStorage
         function loadDataFromStorage() {
@@ -482,33 +650,76 @@
                 if (!storageAvailable) {
                     return false;
                 }
-
                 const savedData = localStorage.getItem('sheetsData');
                 const savedHeaders = localStorage.getItem('sheetsHeaders');
                 const savedConfig = localStorage.getItem('sheetsConfig');
+                const lastLoadTimeString = localStorage.getItem('lastDataLoadTime'); // Get last load time
+
+                let shouldLoadStoredData = false;
 
                 if (savedData && savedHeaders) {
-                    currentData = JSON.parse(savedData);
-                    currentHeaders = JSON.parse(savedHeaders);
-                    
-                    // Restore the dashboard
-                    updateTableHeaders();
-                    updateTableBody();
-                    updateVisualizationButtons();
-                    showDashboard();
-                    
-                    const firstNumericColumn = findFirstNumericColumn();
-                    if (firstNumericColumn > 0) {
-                        visualizeMetric(firstNumericColumn);
-                    }
-                    
-                    showSuccess('Data restored from previous session!');
-                    console.log('Data loaded from localStorage');
+                     const lastLoadTime = lastLoadTimeString ? parseInt(lastLoadTimeString, 10) : 0;
+                     const now = Date.now();
+                     const oneDayAgo = now - (24 * 60 * 60 * 1000);
+
+                     // Check if stored data is recent (within 24 hours)
+                     if (lastLoadTime > oneDayAgo) {
+                         console.log("Found recent data in storage, loading it.");
+                         currentData = JSON.parse(savedData);
+                         currentHeaders = JSON.parse(savedHeaders);
+                         // Restore the dashboard
+                         updateTableHeaders();
+                         updateTableBody();
+                         updateVisualizationButtons();
+                         showDashboard();
+                         const firstNumericColumn = findFirstNumericColumn();
+                         if (firstNumericColumn > 0) {
+                             visualizeMetric(firstNumericColumn);
+                         }
+                         showSuccess('Data restored from previous session!');
+                         console.log('Data loaded from localStorage');
+                         shouldLoadStoredData = true;
+
+                         // Schedule a refresh based on the stored time
+                         const timeUntilRefresh = (24 * 60 * 60 * 1000) - (now - lastLoadTime);
+                         if (timeUntilRefresh > 0) {
+                             refreshTimer = setTimeout(() => {
+                                 console.log("Scheduled refresh triggered from stored data.");
+                                 const authMethod = document.querySelector('input[name="authMethod"]:checked')?.value || 'oauth';
+                                 if (authMethod === 'oauth') {
+                                     authorizeAndLoad().catch(err => console.error("Scheduled OAuth refresh failed:", err));
+                                 } else {
+                                     loadDataWithApiKey().catch(err => console.error("Scheduled API Key refresh failed:", err));
+                                 }
+                             }, timeUntilRefresh);
+                             console.log(`Stored data refresh rescheduled for ${(new Date(now + timeUntilRefresh)).toLocaleString()}`);
+                             updateRefreshStatusUI(timeUntilRefresh); // Update UI status
+                         } else {
+                              // If somehow the time has passed, trigger refresh immediately or soon
+                              console.log("Stored data is older than 24h, triggering refresh.");
+                               refreshTimer = setTimeout(() => {
+                                   console.log("Immediate refresh triggered from old stored data.");
+                                   const authMethod = document.querySelector('input[name="authMethod"]:checked')?.value || 'oauth';
+                                   if (authMethod === 'oauth') {
+                                       authorizeAndLoad().catch(err => console.error("Scheduled OAuth refresh failed:", err));
+                                   } else {
+                                       loadDataWithApiKey().catch(err => console.error("Scheduled API Key refresh failed:", err));
+                                   }
+                               }, 5000); // Small delay to allow UI to settle
+                               updateRefreshStatusUI(5000); // Update UI status
+                         }
+
+                     } else {
+                         console.log("Stored data is older than 24 hours, will attempt to fetch fresh data.");
+                         // Optionally clear old stored data here if desired
+                         // localStorage.removeItem('sheetsData');
+                         // localStorage.removeItem('sheetsHeaders');
+                         // localStorage.removeItem('lastDataLoadTime');
+                     }
                 }
 
                 if (savedConfig) {
                     const config = JSON.parse(savedConfig);
-                    
                     // Restore form values
                     if (config.authMethod) {
                         const authRadio = document.querySelector(`input[name="authMethod"][value="${config.authMethod}"]`);
@@ -521,15 +732,60 @@
                     if (config.apiKey) document.getElementById('apiKey').value = config.apiKey;
                     if (config.sheetId) document.getElementById('sheetId').value = config.sheetId;
                     if (config.sheetRange) document.getElementById('sheetRange').value = config.sheetRange;
-                    
                     console.log('Configuration restored from localStorage');
-                    return true;
+                    return shouldLoadStoredData; // Return true only if *data* was loaded
                 }
-                
-                return false;
+                return shouldLoadStoredData;
             } catch (error) {
                 console.error('Error loading from localStorage:', error);
                 return false;
+            }
+        }
+
+
+        // Function to load sample data for testing
+        function loadSampleData() {
+            console.log("Loading sample data.");
+            const sampleData = [
+                ['Age Group', 'Systolic BP', 'Diastolic BP', 'Heart Rate', 'BMI', 'SpO2', 'Stress', 'HRV (SDNN)'],
+                ['0-18', '114.6563', '77.8866', '80.78', '24.63', '98.26', '3.04', '39.13'],
+                ['19-35', '115.7056', '80.1619', '80.35', '26.01', '98.27', '3.06', '38.22'],
+                ['36-50', '119.7857', '84.1413', '80.71', '28.42', '98.41', '3.23', '32.43'],
+                ['51+', '122.7211', '84.2559', '78.96', '29.85', '98.13', '3.24', '31.53']
+            ];
+            processGoogleSheetsData(sampleData, false); // Pass false to indicate sample data
+            showDashboard();
+            // Cancel any existing refresh timer if loading sample data manually
+            if (refreshTimer) {
+                clearTimeout(refreshTimer);
+                refreshTimer = null;
+                console.log("Refresh timer cleared (sample data loaded manually).");
+                document.getElementById('refreshStatus').textContent = ''; // Clear UI status
+            }
+        }
+
+        // Function to save data to localStorage (with fallback to memory)
+        function saveDataToStorage() {
+            try {
+                if (storageAvailable) {
+                    localStorage.setItem('sheetsData', JSON.stringify(currentData));
+                    localStorage.setItem('sheetsHeaders', JSON.stringify(currentHeaders));
+                    // Save configuration
+                    const config = {
+                        authMethod: document.querySelector('input[name="authMethod"]:checked')?.value,
+                        clientId: document.getElementById('clientId').value,
+                        apiKey: document.getElementById('apiKey').value,
+                        sheetId: document.getElementById('sheetId').value,
+                        sheetRange: document.getElementById('sheetRange').value
+                    };
+                    localStorage.setItem('sheetsConfig', JSON.stringify(config));
+                    showSuccess('Configuration and data saved successfully!');
+                    console.log('Data saved to localStorage');
+                } else {
+                    console.log('localStorage not available - data will not persist across sessions');
+                }
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
             }
         }
 
@@ -540,12 +796,11 @@
                     localStorage.removeItem('sheetsData');
                     localStorage.removeItem('sheetsHeaders');
                     localStorage.removeItem('sheetsConfig');
+                    localStorage.removeItem('lastDataLoadTime'); // Also clear the timestamp
                     // Note: We don't clear the protection password unless user explicitly wants to
                 }
-                
                 // Clear the dashboard
                 document.getElementById('dashboardContent').style.display = 'none';
-                
                 // Reset form (only if unlocked)
                 if (!fieldsLocked) {
                     document.getElementById('clientId').value = '';
@@ -553,15 +808,13 @@
                 }
                 document.getElementById('sheetId').value = '';
                 document.getElementById('sheetRange').value = 'Sheet1!A1:H5';
-                
                 hideSuccess();
                 showSuccess('All stored data cleared!');
                 console.log('Stored data cleared');
-                
                 // Load sample data after clearing
                 setTimeout(() => {
                     hideSuccess();
-                    loadSampleData();
+                    loadSampleData(); // This will clear the timer
                 }, 1500);
             } catch (error) {
                 console.error('Error clearing localStorage:', error);
@@ -572,106 +825,6 @@
         const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
         const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 
-        // Function to authorize and load data
-        async function authorizeAndLoad() {
-            const clientId = document.getElementById('clientId').value;
-            if (!clientId) {
-                showError('Please enter your OAuth Client ID');
-                return;
-            }
-
-            showLoading(true);
-            hideError();
-            hideSuccess();
-
-            try {
-                // Initialize gapi if not already done
-                if (!gapiInitialized) {
-                    await new Promise((resolve, reject) => {
-                        gapi.load('client:auth2', {
-                            callback: resolve,
-                            onerror: reject
-                        });
-                    });
-
-                    await gapi.client.init({
-                        discoveryDocs: [DISCOVERY_DOC],
-                        clientId: clientId,
-                        scope: SCOPES
-                    });
-
-                    gapiInitialized = true;
-                }
-                
-                const authInstance = gapi.auth2.getAuthInstance();
-                
-                // Check if already signed in
-                if (!authInstance.isSignedIn.get()) {
-                    console.log('Requesting sign-in...');
-                    await authInstance.signIn();
-                }
-                
-                isSignedIn = authInstance.isSignedIn.get();
-                updateSignInStatus();
-                
-                if (isSignedIn) {
-                    await loadDataFromGoogleSheets();
-                } else {
-                    throw new Error('Sign-in failed');
-                }
-                
-            } catch (error) {
-                console.error('Authorization error:', error);
-                showError('Authorization failed: ' + error.message + '. Please check your Client ID and make sure the domain is authorized.');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Function to load data from Google Sheets using OAuth
-        async function loadDataFromGoogleSheets() {
-            const sheetId = document.getElementById('sheetId').value;
-            const sheetRange = document.getElementById('sheetRange').value;
-
-            if (!sheetId) {
-                showError('Please enter Sheet ID');
-                return;
-            }
-
-            if (!isSignedIn) {
-                showError('Please sign in first');
-                return;
-            }
-
-            try {
-                console.log('Fetching data from Google Sheets...');
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: sheetId,
-                    range: sheetRange,
-                });
-                
-                const data = response.result;
-                console.log('Data received:', data);
-                
-                if (!data.values || data.values.length === 0) {
-                    throw new Error('No data found in the specified range. Please check your sheet ID and range.');
-                }
-
-                processGoogleSheetsData(data.values);
-                showDashboard();
-                
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                if (error.status === 403) {
-                    showError('Access denied. Please make sure the sheet is shared or public.');
-                } else if (error.status === 404) {
-                    showError('Sheet not found. Please check your Sheet ID.');
-                } else {
-                    showError('Error loading data: ' + error.message);
-                }
-            }
-        }
-
         // Function to sign out
         async function signOut() {
             try {
@@ -681,6 +834,8 @@
                 updateSignInStatus();
                 document.getElementById('dashboardContent').style.display = 'none';
                 console.log('Signed out successfully');
+                // Clear refresh timer on sign out
+                clearRefreshTimer();
             } catch (error) {
                 console.error('Sign out error:', error);
             }
@@ -703,7 +858,6 @@
                 radio.addEventListener('change', function() {
                     const oauthConfig = document.getElementById('oauthConfig');
                     const apikeyConfig = document.getElementById('apikeyConfig');
-                    
                     if (this.value === 'oauth') {
                         oauthConfig.style.display = 'block';
                         apikeyConfig.style.display = 'none';
@@ -718,7 +872,6 @@
         // Main connection function
         async function connectToGoogleSheets() {
             const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
-            
             if (authMethod === 'oauth') {
                 await authorizeAndLoad();
             } else {
@@ -726,87 +879,142 @@
             }
         }
 
-        // API Key method (simpler, for public sheets)
-        async function loadDataWithApiKey() {
-            const apiKey = document.getElementById('apiKey').value;
-            const sheetId = document.getElementById('sheetId').value;
-            const sheetRange = document.getElementById('sheetRange').value;
+        // Utility functions
+        function showLoading(show) {
+            document.getElementById('loadingMessage').style.display = show ? 'block' : 'none';
+        }
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+        function hideSuccess() {
+            document.getElementById('successMessage').style.display = 'none';
+        }
+        function showDashboard() {
+            document.getElementById('dashboardContent').style.display = 'block';
+        }
 
-            if (!apiKey || !sheetId) {
-                showError('Please enter both API Key and Sheet ID');
-                return;
-            }
-
-            showLoading(true);
-            hideError();
-            hideSuccess();
-
-            try {
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetRange}?key=${apiKey}`;
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`API Error: ${errorData.error.message}`);
+        // Function to sort the table
+        function sortTable(n) {
+            let switching = true;
+            let dir = "asc";
+            let switchcount = 0;
+            const table = document.getElementById("metricsTable");
+            while (switching) {
+                switching = false;
+                const rows = table.rows;
+                for (let i = 1; i < (rows.length - 1); i++) {
+                    let shouldSwitch = false;
+                    const x = rows[i].getElementsByTagName("TD")[n];
+                    const y = rows[i + 1].getElementsByTagName("TD")[n];
+                    let xValue, yValue;
+                    if (n === 0) {
+                        xValue = x.innerHTML.toLowerCase();
+                        yValue = y.innerHTML.toLowerCase();
+                    } else {
+                        xValue = parseFloat(x.innerHTML.replace(',', '')) || 0;
+                        yValue = parseFloat(y.innerHTML.replace(',', '')) || 0;
+                    }
+                    if (dir === "asc" && xValue > yValue) {
+                        shouldSwitch = true;
+                        break;
+                    } else if (dir === "desc" && xValue < yValue) {
+                        shouldSwitch = true;
+                        break;
+                    }
                 }
-                
-                const data = await response.json();
-                
-                if (!data.values || data.values.length === 0) {
-                    throw new Error('No data found in the specified range');
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else {
+                    if (switchcount === 0 && dir === "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
                 }
-
-                processGoogleSheetsData(data.values);
-                showDashboard();
-                
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                showError('Error loading data: ' + error.message);
-            } finally {
-                showLoading(false);
             }
         }
 
-        // Function to load sample data for testing
-        function loadSampleData() {
-            const sampleData = [
-                ['Age Group', 'Systolic BP', 'Diastolic BP', 'Heart Rate', 'BMI', 'SpO2', 'Stress', 'HRV (SDNN)'],
-                ['0-18', '114.6563', '77.8866', '80.78', '24.63', '98.26', '3.04', '39.13'],
-                ['19-35', '115.7056', '80.1619', '80.35', '26.01', '98.27', '3.06', '38.22'],
-                ['36-50', '119.7857', '84.1413', '80.71', '28.42', '98.41', '3.23', '32.43'],
-                ['51+', '122.7211', '84.2559', '78.96', '29.85', '98.13', '3.24', '31.53']
-            ];
-            
-            processGoogleSheetsData(sampleData);
-            showDashboard();
+        // Column visibility functions
+        function showAllMetrics() {
+            const table = document.getElementById("metricsTable");
+            const rows = table.getElementsByTagName("tr");
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName("td");
+                const headers = rows[i].getElementsByTagName("th");
+                [...cells, ...headers].forEach(cell => {
+                    cell.style.display = "";
+                });
+            }
+        }
+        function showBloodPressure() {
+            showSpecificColumns([0, 1, 2]); // Age Group, Systolic BP, Diastolic BP
+        }
+        function showHeartMetrics() {
+            showSpecificColumns([0, 3, 5, 7]); // Age Group, Heart Rate, SpO2, HRV
+        }
+        function showBodyMetrics() {
+            showSpecificColumns([0, 4, 6]); // Age Group, BMI, Stress
+        }
+        function showSpecificColumns(columnIndices) {
+            const table = document.getElementById("metricsTable");
+            const rows = table.getElementsByTagName("tr");
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName("td");
+                const headers = rows[i].getElementsByTagName("th");
+                [...cells, ...headers].forEach((cell, index) => {
+                    cell.style.display = columnIndices.includes(index) ? "" : "none";
+                });
+            }
         }
 
-        // Function to process the data from Google Sheets
-        function processGoogleSheetsData(data) {
-            if (data.length < 2) {
-                throw new Error('Data must have at least headers and one row');
-            }
-
-            currentHeaders = data[0];
-            currentData = data.slice(1);
-
-            // Update table headers
-            updateTableHeaders();
-
-            // Update table body
-            updateTableBody();
-
-            // Update visualization buttons
-            updateVisualizationButtons();
-
-            // Save data to localStorage
-            saveDataToStorage();
-
-            // Initialize with first numeric column visualization
-            const firstNumericColumn = findFirstNumericColumn();
-            if (firstNumericColumn > 0) {
-                visualizeMetric(firstNumericColumn);
-            }
+        // Function to visualize a metric as a bar chart
+        function visualizeMetric(colIndex) {
+            // Update active button
+            document.querySelectorAll('#visualizationButtons button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`metric${colIndex}Btn`).classList.add('active');
+            // Get data from current data array
+            const data = currentData.map(row => ({
+                category: row[0],
+                value: parseFloat(row[colIndex]) || 0
+            }));
+            // Find min and max values for scaling
+            const values = data.map(item => item.value);
+            const minValue = Math.min(...values);
+            const maxValue = Math.max(...values);
+            // Clear previous chart
+            const chartContainer = document.getElementById("chartContainer");
+            chartContainer.innerHTML = "";
+            // Create bars
+            const barWidth = 100 / data.length;
+            data.forEach((item, i) => {
+                const normalizedHeight = maxValue > minValue 
+                    ? ((item.value - minValue) / (maxValue - minValue)) * 80 + 20
+                    : 50; // Default height if all values are the same
+                const bar = document.createElement("div");
+                bar.className = "bar";
+                bar.style.left = (i * barWidth) + "%";
+                bar.style.width = (barWidth - 2) + "%";
+                bar.style.height = normalizedHeight + "%";
+                // Different colors based on index
+                const colors = ["#4CAF50", "#2196F3", "#FF9800", "#E91E63", "#9C27B0", "#607D8B"];
+                bar.style.backgroundColor = colors[i % colors.length];
+                // Add label and value
+                bar.innerHTML = `${item.category}<br>${item.value.toFixed(2)}`;
+                chartContainer.appendChild(bar);
+            });
         }
 
         // Function to update table headers
@@ -825,7 +1033,6 @@
         function updateTableBody() {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            
             currentData.forEach(row => {
                 const tr = document.createElement('tr');
                 row.forEach(cell => {
@@ -841,7 +1048,6 @@
         function updateVisualizationButtons() {
             const buttonsContainer = document.getElementById('visualizationButtons');
             buttonsContainer.innerHTML = '';
-
             currentHeaders.forEach((header, index) => {
                 if (index > 0) { // Skip first column (assumed to be categories)
                     const button = document.createElement('button');
@@ -864,194 +1070,35 @@
             return 1; // Default to second column
         }
 
-        // Utility functions
-        function showLoading(show) {
-            document.getElementById('loadingMessage').style.display = show ? 'block' : 'none';
-        }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
-
-        function hideError() {
-            document.getElementById('errorMessage').style.display = 'none';
-        }
-
-        function showSuccess(message) {
-            const successDiv = document.getElementById('successMessage');
-            successDiv.textContent = message;
-            successDiv.style.display = 'block';
-        }
-
-        function hideSuccess() {
-            document.getElementById('successMessage').style.display = 'none';
-        }
-
-        function showDashboard() {
-            document.getElementById('dashboardContent').style.display = 'block';
-        }
-
-        // Function to sort the table
-        function sortTable(n) {
-            let switching = true;
-            let dir = "asc";
-            let switchcount = 0;
-            const table = document.getElementById("metricsTable");
-            
-            while (switching) {
-                switching = false;
-                const rows = table.rows;
-                
-                for (let i = 1; i < (rows.length - 1); i++) {
-                    let shouldSwitch = false;
-                    const x = rows[i].getElementsByTagName("TD")[n];
-                    const y = rows[i + 1].getElementsByTagName("TD")[n];
-                    
-                    let xValue, yValue;
-                    if (n === 0) {
-                        xValue = x.innerHTML.toLowerCase();
-                        yValue = y.innerHTML.toLowerCase();
-                    } else {
-                        xValue = parseFloat(x.innerHTML.replace(',', '')) || 0;
-                        yValue = parseFloat(y.innerHTML.replace(',', '')) || 0;
-                    }
-                    
-                    if (dir === "asc" && xValue > yValue) {
-                        shouldSwitch = true;
-                        break;
-                    } else if (dir === "desc" && xValue < yValue) {
-                        shouldSwitch = true;
-                        break;
-                    }
-                }
-                
-                if (shouldSwitch) {
-                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                    switching = true;
-                    switchcount++;
-                } else {
-                    if (switchcount === 0 && dir === "asc") {
-                        dir = "desc";
-                        switching = true;
-                    }
-                }
-            }
-        }
-        
-        // Column visibility functions
-        function showAllMetrics() {
-            const table = document.getElementById("metricsTable");
-            const rows = table.getElementsByTagName("tr");
-            
-            for (let i = 0; i < rows.length; i++) {
-                const cells = rows[i].getElementsByTagName("td");
-                const headers = rows[i].getElementsByTagName("th");
-                
-                [...cells, ...headers].forEach(cell => {
-                    cell.style.display = "";
-                });
-            }
-        }
-        
-        function showBloodPressure() {
-            showSpecificColumns([0, 1, 2]); // Age Group, Systolic BP, Diastolic BP
-        }
-        
-        function showHeartMetrics() {
-            showSpecificColumns([0, 3, 5, 7]); // Age Group, Heart Rate, SpO2, HRV
-        }
-        
-        function showBodyMetrics() {
-            showSpecificColumns([0, 4, 6]); // Age Group, BMI, Stress
-        }
-
-        function showSpecificColumns(columnIndices) {
-            const table = document.getElementById("metricsTable");
-            const rows = table.getElementsByTagName("tr");
-            
-            for (let i = 0; i < rows.length; i++) {
-                const cells = rows[i].getElementsByTagName("td");
-                const headers = rows[i].getElementsByTagName("th");
-                
-                [...cells, ...headers].forEach((cell, index) => {
-                    cell.style.display = columnIndices.includes(index) ? "" : "none";
-                });
-            }
-        }
-        
-        // Function to visualize a metric as a bar chart
-        function visualizeMetric(colIndex) {
-            // Update active button
-            document.querySelectorAll('#visualizationButtons button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(`metric${colIndex}Btn`).classList.add('active');
-            
-            // Get data from current data array
-            const data = currentData.map(row => ({
-                category: row[0],
-                value: parseFloat(row[colIndex]) || 0
-            }));
-            
-            // Find min and max values for scaling
-            const values = data.map(item => item.value);
-            const minValue = Math.min(...values);
-            const maxValue = Math.max(...values);
-            
-            // Clear previous chart
-            const chartContainer = document.getElementById("chartContainer");
-            chartContainer.innerHTML = "";
-            
-            // Create bars
-            const barWidth = 100 / data.length;
-            
-            data.forEach((item, i) => {
-                const normalizedHeight = maxValue > minValue 
-                    ? ((item.value - minValue) / (maxValue - minValue)) * 80 + 20
-                    : 50; // Default height if all values are the same
-                
-                const bar = document.createElement("div");
-                bar.className = "bar";
-                bar.style.left = (i * barWidth) + "%";
-                bar.style.width = (barWidth - 2) + "%";
-                bar.style.height = normalizedHeight + "%";
-                
-                // Different colors based on index
-                const colors = ["#4CAF50", "#2196F3", "#FF9800", "#E91E63", "#9C27B0", "#607D8B"];
-                bar.style.backgroundColor = colors[i % colors.length];
-                
-                // Add label and value
-                bar.innerHTML = `${item.category}<br>${item.value.toFixed(2)}`;
-                
-                chartContainer.appendChild(bar);
-            });
-        }
+        // --- Modified Initialization ---
 
         // Initialize the page
         window.onload = function() {
             // Check storage availability and update status
             checkStorageAvailability();
             updateStorageStatus();
-            
             // Load password protection settings
             loadPasswordFromStorage();
-            
+
             // Try to load saved data first
             const dataLoaded = loadDataFromStorage();
-            
-            // If no saved data, load sample data
+
+            // If no saved/recent data was loaded, load sample data
             if (!dataLoaded) {
-                loadSampleData();
+                console.log("No recent data found, loading sample data.");
+                loadSampleData(); // This clears any timer
             }
-            
             // Initialize configuration section as collapsed
             const configContent = document.getElementById('configContent');
             const arrow = document.getElementById('configArrow');
             configContent.classList.add('collapsed');
             arrow.classList.remove('expanded');
             arrow.textContent = '▼';
+
+            // Ensure the refresh timer is cleared if the page reloads/closes
+            window.addEventListener('beforeunload', () => {
+                clearRefreshTimer();
+            });
         };
     </script>
 </body>
