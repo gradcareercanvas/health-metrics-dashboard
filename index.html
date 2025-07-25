@@ -290,6 +290,25 @@
         let fieldsLocked = true;
         let refreshTimer = null; // Variable to hold the timer ID
 
+        // --- Mapping for Consistent Styling ---
+        // Define the mapping from Google Sheet column names to display names
+        const headerNameMapping = {
+            'age_group': 'Age Group',
+            'avg_systolic': 'Systolic BP',
+            'avg_diastolic': 'Diastolic BP',
+            'avg_heart_rate': 'Heart Rate',
+            'avg_bmi': 'BMI',
+            'avg_spo2': 'SpO2',
+            'avg_stress': 'Stress',
+            'avg_hrv_sdnn': 'HRV (SDNN)',
+            'scan_count': 'Scan Count'
+            // Add more mappings if your sheet has different column names
+        };
+
+        // Define the mapping for visualization button labels
+        // Often the same as headerNameMapping, but can be different if needed
+        const metricLabels = headerNameMapping;
+
         // Simple hash function for password protection
         function simpleHash(str) {
             let hash = 0;
@@ -561,7 +580,7 @@
                 } else if (error.status === 404) {
                     showError('Sheet not found. Please check your Sheet ID.');
                 } else {
-                    showError('Error loading data: ' + error.message);
+                    showError('Error loading  ' + error.message);
                 }
                 // Don't schedule refresh on error
                 clearRefreshTimer();
@@ -612,15 +631,19 @@
             if (data.length < 2) {
                 throw new Error('Data must have at least headers and one row');
             }
-            currentHeaders = data[0];
+            
+            // --- Apply Header Mapping for Consistent Styling ---
+            let headers = data[0];
+            // Map headers if they match keys in the mapping object
+            currentHeaders = headers.map(header => headerNameMapping[header] || header);
             currentData = data.slice(1);
 
-            // --- Core UI Update Logic (remains the same) ---
+            // --- Core UI Update Logic ---
             // Update table headers
             updateTableHeaders();
             // Update table body
             updateTableBody();
-            // Update visualization buttons
+            // Update visualization buttons (using mapped labels)
             updateVisualizationButtons();
             // Save data to localStorage
             saveDataToStorage();
@@ -1048,10 +1071,12 @@
         function updateVisualizationButtons() {
             const buttonsContainer = document.getElementById('visualizationButtons');
             buttonsContainer.innerHTML = '';
+            // Iterate through the mapped headers to create buttons
             currentHeaders.forEach((header, index) => {
                 if (index > 0) { // Skip first column (assumed to be categories)
                     const button = document.createElement('button');
-                    button.textContent = header;
+                    // Use the metricLabels mapping for button text
+                    button.textContent = metricLabels[header] || header;
                     button.id = `metric${index}Btn`;
                     button.onclick = () => visualizeMetric(index);
                     if (index === 1) button.classList.add('active');
